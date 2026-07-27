@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mission Control: Task Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-deep:#0b0e1f;
+    --bg-panel:#141833;
+    --bg-panel-2:#1b2046;
+    --bg-card:#1a1e40;
+    --border-soft:#2a2f5c;
+    --flare:#ff4d6d;
+    --flare-dim:#3a1c2c;
+    --fuel:#ffb84d;
+    --fuel-dim:#3a2c14;
+    --thrive:#3ddc97;
+    --thrive-dim:#123a2c;
+    --nova:#9d7bff;
+    --nova-dim:#241c4a;
+    --text-light:#f4f3ff;
+    --text-muted:#8d8fb0;
+    --text-faint:#5c5e85;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:
+      radial-gradient(1px 1px at 20px 30px, #ffffff33 50%, transparent 50%),
+      radial-gradient(1px 1px at 120px 90px, #ffffff22 50%, transparent 50%),
+      radial-gradient(1.5px 1.5px at 220px 40px, #ffffff2a 50%, transparent 50%),
+      radial-gradient(1px 1px at 300px 150px, #ffffff1e 50%, transparent 50%),
+      radial-gradient(1.5px 1.5px at 60px 200px, #ffffff28 50%, transparent 50%),
+      radial-gradient(1px 1px at 400px 250px, #ffffff20 50%, transparent 50%),
+      var(--bg-deep);
+    background-attachment:fixed;
+    font-family:'Inter',sans-serif;
+    color:var(--text-light);
+    padding:28px 20px 80px;
+    min-height:100vh;
+  }
+  .wrap{max-width:920px;margin:0 auto;}
+  .display{font-family:'Space Grotesk',sans-serif;}
+  .mono{font-family:'JetBrains Mono',monospace;}
+
+  header.topbar{
+    display:flex;justify-content:space-between;align-items:flex-start;
+    flex-wrap:wrap;gap:16px;margin-bottom:20px;
+  }
+  .brand{display:flex;flex-direction:column;gap:2px;}
+  .brand .eyebrow{font-size:12px;letter-spacing:2px;color:var(--nova);text-transform:uppercase;font-weight:700;}
+  .brand h1{font-size:30px;font-weight:700;margin:0;}
+  .brand .subdate{color:var(--text-muted);font-size:13px;margin-top:2px;}
+
+  .stats{display:flex;gap:10px;flex-wrap:wrap;}
+  .stat-chip{
+    background:var(--bg-panel);border:1px solid var(--border-soft);
+    border-radius:14px;padding:10px 16px;min-width:110px;
+  }
+  .stat-chip .label{font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;}
+  .stat-chip .value{font-size:20px;font-weight:700;margin-top:2px;}
+  .stat-chip.streak .value{color:var(--fuel);}
+  .stat-chip.level .value{color:var(--nova);}
+
+  .xp-bar-outer{width:100%;height:6px;background:var(--bg-deep);border-radius:4px;overflow:hidden;margin-top:6px;}
+  .xp-bar-inner{height:100%;background:linear-gradient(90deg,var(--nova),#c9b6ff);transition:width .5s ease;}
+
+  .overdue-banner{
+    background:linear-gradient(90deg,var(--flare-dim),#2a0f18);
+    border:1px solid var(--flare);border-radius:14px;
+    padding:14px 18px;margin-bottom:20px;
+    display:flex;align-items:center;gap:12px;
+    animation:pulseglow 2.2s ease-in-out infinite;
+  }
+  @keyframes pulseglow{
+    0%,100%{box-shadow:0 0 0 0 rgba(255,77,109,.35);}
+    50%{box-shadow:0 0 0 8px rgba(255,77,109,0);}
+  }
+  .overdue-banner .icon{font-size:20px;}
+  .overdue-banner strong{color:var(--flare);}
+
+  .panel{
+    background:var(--bg-panel);border:1px solid var(--border-soft);
+    border-radius:18px;padding:20px;margin-bottom:20px;
+  }
+  .panel h2{
+    font-family:'Space Grotesk',sans-serif;font-size:16px;margin:0 0 4px;
+    display:flex;align-items:center;gap:8px;
+  }
+  .panel .panel-sub{color:var(--text-muted);font-size:13px;margin:0 0 14px;}
+
+  .briefing-list{display:flex;flex-direction:column;gap:8px;}
+  .empty-state{
+    text-align:center;color:var(--text-muted);padding:22px 10px;
+    font-size:14px;
+  }
+  .empty-state .big{font-size:26px;display:block;margin-bottom:6px;}
+
+  .task-row{
+    display:flex;align-items:center;gap:12px;
+    background:var(--bg-card);border-radius:12px;padding:12px 14px;
+    border-left:4px solid var(--border-soft);
+  }
+  .task-row.p-high{border-left-color:var(--flare);}
+  .task-row.p-medium{border-left-color:var(--fuel);}
+  .task-row.p-low{border-left-color:var(--thrive);}
+  .task-row.done{opacity:.5;}
+  .task-row.done .task-title{text-decoration:line-through;}
+
+  .check-btn{
+    width:24px;height:24px;border-radius:50%;flex:none;cursor:pointer;
+    border:2px solid var(--text-faint);background:transparent;
+    display:flex;align-items:center;justify-content:center;color:transparent;
+    font-size:14px;transition:.15s;
+  }
+  .check-btn:hover{border-color:var(--thrive);}
+  .task-row.done .check-btn{background:var(--thrive);border-color:var(--thrive);color:#04241a;}
+
+  .task-body{flex:1;min-width:0;}
+  .task-title{font-weight:600;font-size:14.5px;}
+  .task-desc{font-size:12.5px;color:var(--text-muted);margin-top:3px;line-height:1.4;}
+  .task-meta{display:flex;gap:10px;flex-wrap:wrap;margin-top:4px;font-size:12px;color:var(--text-muted);}
+  .prio-tag{
+    font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;
+    padding:2px 8px;border-radius:20px;
+  }
+  .prio-tag.high{background:var(--flare-dim);color:var(--flare);}
+  .prio-tag.medium{background:var(--fuel-dim);color:var(--fuel);}
+  .prio-tag.low{background:var(--thrive-dim);color:var(--thrive);}
+  .date-tag{font-weight:700;}
+  .date-tag.start{color:var(--thrive);}
+  .date-tag.due{color:var(--flare);}
+
+  .form-col{display:flex;flex-direction:column;gap:4px;}
+  .form-col label{font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;}
+
+  .del-btn{
+    flex:none;background:transparent;border:none;color:var(--text-faint);
+    cursor:pointer;font-size:16px;padding:4px 6px;border-radius:8px;
+  }
+  .del-btn:hover{color:var(--flare);background:var(--flare-dim);}
+
+  .month-tabs{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;margin-bottom:18px;}
+  .month-tab{
+    flex:none;background:var(--bg-panel);border:1px solid var(--border-soft);
+    border-radius:12px;padding:10px 14px;cursor:pointer;text-align:center;min-width:64px;
+  }
+  .month-tab .mname{font-size:12px;font-weight:700;color:var(--text-muted);}
+  .month-tab .mcount{font-size:15px;font-weight:700;margin-top:2px;}
+  .month-tab.active{border-color:var(--nova);background:var(--nova-dim);}
+  .month-tab.active .mname{color:var(--nova);}
+
+  .week-nav{display:flex;align-items:center;gap:12px;margin-bottom:14px;}
+  .week-nav .range{font-size:13px;color:var(--text-muted);flex:1;text-align:center;}
+  .week-grid{display:grid;grid-template-columns:repeat(7,minmax(120px,1fr));gap:8px;overflow-x:auto;}
+  .day-col{background:var(--bg-card);border-radius:12px;padding:10px;min-height:100px;border:1px solid transparent;}
+  .day-col.today-col{border-color:var(--nova);background:var(--nova-dim);}
+  .day-col .dname{font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;}
+  .day-col .dnum{font-size:16px;font-weight:700;margin-bottom:8px;}
+  .day-col.today-col .dnum{color:var(--nova);}
+  .week-task{
+    font-size:12px;padding:6px 8px;border-radius:8px;margin-bottom:5px;
+    background:var(--bg-panel-2);border-left:3px solid var(--border-soft);cursor:pointer;
+  }
+  .week-task.p-high{border-left-color:var(--flare);}
+  .week-task.p-medium{border-left-color:var(--fuel);}
+  .week-task.p-low{border-left-color:var(--thrive);}
+  .week-task.done{opacity:.45;text-decoration:line-through;}
+  .day-empty{font-size:11px;color:var(--text-faint);}
+
+  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:16px;}
+  .cal-head{font-size:11px;color:var(--text-muted);text-align:center;padding-bottom:2px;font-weight:700;}
+  .cal-cell{
+    background:var(--bg-card);border-radius:10px;min-height:62px;padding:6px;
+    cursor:pointer;border:1px solid transparent;
+  }
+  .cal-cell.empty{background:transparent;cursor:default;}
+  .cal-cell.today{border-color:var(--nova);}
+  .cal-cell.selected{border-color:var(--fuel);background:var(--fuel-dim);}
+  .cal-daynum{font-size:12px;font-weight:700;color:var(--text-muted);}
+  .cal-cell.today .cal-daynum{color:var(--nova);}
+  .cal-dots{display:flex;gap:3px;flex-wrap:wrap;margin-top:8px;}
+  .cal-dot{width:6px;height:6px;border-radius:50%;flex:none;}
+  .cal-dot.start{background:var(--thrive);}
+  .cal-dot.due{background:var(--flare);}
+  .cal-more{font-size:9px;color:var(--text-muted);margin-top:3px;}
+  .day-filter-pill{
+    display:inline-flex;align-items:center;gap:8px;background:var(--fuel-dim);color:var(--fuel);
+    font-size:12px;font-weight:600;padding:6px 12px;border-radius:20px;margin-bottom:12px;cursor:pointer;
+  }
+
+  .runway{position:relative;height:54px;margin:6px 0 16px;}
+  .runway-track{
+    position:absolute;top:26px;left:0;right:0;height:4px;
+    background:var(--bg-deep);border-radius:4px;overflow:visible;
+  }
+  .runway-fill{position:absolute;top:0;left:0;height:100%;background:linear-gradient(90deg,var(--nova),var(--flare));border-radius:4px;transition:width .6s ease;}
+  .rocket{position:absolute;top:6px;font-size:24px;transform:translateX(-50%);transition:left .6s ease;}
+  .planet{position:absolute;right:-6px;top:10px;font-size:22px;}
+
+  .form-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;}
+  input[type=text], input[type=date]{
+    background:var(--bg-card);border:1px solid var(--border-soft);color:var(--text-light);
+    border-radius:10px;padding:10px 12px;font-family:inherit;font-size:14px;
+  }
+  input[type=text]{flex:1;min-width:180px;}
+  select{
+    background:var(--bg-card);border:1px solid var(--border-soft);color:var(--text-light);
+    border-radius:10px;padding:10px 12px;font-family:inherit;font-size:14px;
+  }
+  .btn{
+    background:var(--nova);color:#141126;border:none;border-radius:10px;
+    padding:10px 18px;font-weight:700;font-size:14px;cursor:pointer;font-family:inherit;
+  }
+  .btn:hover{background:#b29bff;}
+  .btn.ghost{background:transparent;border:1px solid var(--border-soft);color:var(--text-light);}
+  .btn.ghost:hover{border-color:var(--nova);}
+
+  .toast{
+    position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
+    background:var(--nova);color:#141126;padding:12px 22px;border-radius:30px;
+    font-weight:700;font-size:14px;box-shadow:0 8px 24px rgba(0,0,0,.4);
+    opacity:0;pointer-events:none;transition:opacity .3s, transform .3s;z-index:50;
+  }
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(-6px);}
+
+  footer.note{text-align:center;color:var(--text-faint);font-size:12px;margin-top:30px;line-height:1.6;}
+  ::-webkit-scrollbar{height:6px;}
+  ::-webkit-scrollbar-thumb{background:var(--border-soft);border-radius:4px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="topbar">
+    <div class="brand">
+      <span class="eyebrow">Mission control</span>
+      <h1 class="display">Your task launchpad</h1>
+      <div class="subdate mono" id="todayLabel"></div>
+    </div>
+    <div class="stats">
+      <div class="stat-chip streak">
+        <div class="label">Streak</div>
+        <div class="value" id="streakVal">🔥 0d</div>
+      </div>
+      <div class="stat-chip level">
+        <div class="label">Level</div>
+        <div class="value" id="levelVal">Lv 1</div>
+        <div class="xp-bar-outer"><div class="xp-bar-inner" id="xpBar" style="width:0%"></div></div>
+      </div>
+    </div>
+  </header>
+
+  <div id="overdueBanner" class="overdue-banner" style="display:none;">
+    <span class="icon">🚨</span>
+    <div><strong id="overdueCount"></strong> <span id="overdueText"></span></div>
+  </div>
+
+  <div class="panel">
+    <h2>📡 Today's briefing</h2>
+    <p class="panel-sub" id="briefSub">Missions due today or overdue. Clear these first.</p>
+    <div class="briefing-list" id="briefingList"></div>
+  </div>
+
+  <div class="panel">
+    <h2 class="display">📅 This week, by day</h2>
+    <p class="panel-sub">Perfect for a weekend check-in. See exactly what's landing on each day.</p>
+    <div class="week-nav">
+      <button class="btn ghost" id="prevWeekBtn">‹ Prev</button>
+      <div class="range mono" id="weekRange"></div>
+      <button class="btn ghost" id="nextWeekBtn">Next ›</button>
+    </div>
+    <div class="week-grid" id="weekGrid"></div>
+  </div>
+
+  <div class="panel">
+    <h2 class="display">🚀 Launch a new mission</h2>
+    <p class="panel-sub">Give it a name, a start date, and a due date. It'll auto-file into the right month by due date.</p>
+    <div class="form-row">
+      <div class="form-col" style="flex:1;min-width:180px;">
+        <label>Mission name</label>
+        <input type="text" id="taskTitle" placeholder="e.g. Review Q3 budget with finance">
+      </div>
+      <div class="form-col" style="flex:1;min-width:180px;">
+        <label>Description</label>
+        <input type="text" id="taskDesc" placeholder="Optional details, links, or context">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-col">
+        <label>Start date</label>
+        <input type="date" id="taskStartDate">
+      </div>
+      <div class="form-col">
+        <label>Due date</label>
+        <input type="date" id="taskDate">
+      </div>
+      <div class="form-col">
+        <label>Thrust</label>
+        <select id="taskPriority">
+          <option value="high">🔴 High thrust</option>
+          <option value="medium" selected>🟡 Medium thrust</option>
+          <option value="low">🟢 Low thrust</option>
+        </select>
+      </div>
+      <div class="form-col">
+        <label>&nbsp;</label>
+        <button class="btn" id="addTaskBtn">Add mission</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2 class="display" id="monthHeading">Mission log</h2>
+    <p class="panel-sub" id="monthSub"></p>
+    <div class="month-tabs" id="monthTabs"></div>
+
+    <div class="runway">
+      <div class="runway-track"><div class="runway-fill" id="runwayFill" style="width:0%"></div></div>
+      <div class="rocket" id="rocketEl" style="left:0%">🚀</div>
+      <div class="planet">🪐</div>
+    </div>
+
+    <div class="cal-grid" id="calGrid"></div>
+  </div>
+
+  <div class="panel">
+    <h2 class="display">📋 All missions, by due date</h2>
+    <p class="panel-sub" id="allListSub">Every mission across every month, earliest due date first.</p>
+    <div class="briefing-list" id="allTasksList"></div>
+  </div>
+
+  <div class="panel">
+    <h2 class="display">✅ Completed missions</h2>
+    <p class="panel-sub" id="completedListSub">Everything you've already knocked out.</p>
+    <div class="briefing-list" id="completedTasksList"></div>
+  </div>
+
+  <footer class="note">
+    Your missions are saved automatically. Since this lives in a browser tab rather than as an app,<br>
+    it can't send you push notifications in the background. Open it each morning and the briefing above<br>
+    will surface everything due or overdue, so nothing slips through.
+  </footer>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const MONTH_NAMES=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+let tasks=[];
+let progress={xp:0,streak:0,lastCompletionDate:null};
+let selectedMonth=new Date().getMonth();
+const currentYear=new Date().getFullYear();
+let weekOffset=0;
+
+function isoDate(d){
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function todayStr(){
+  return isoDate(new Date());
+}
+function getMonday(offset){
+  const d=new Date();
+  const day=d.getDay();
+  const diffToMonday=(day===0?-6:1-day);
+  d.setDate(d.getDate()+diffToMonday+offset*7);
+  d.setHours(0,0,0,0);
+  return d;
+}
+function daysBetween(a,b){
+  const da=new Date(a+'T00:00:00'), db=new Date(b+'T00:00:00');
+  return Math.round((db-da)/86400000);
+}
+function fmtDate(iso){
+  const d=new Date(iso+'T00:00:00');
+  return d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+}
+function uid(){return 'm'+Date.now()+Math.random().toString(36).slice(2,7);}
+
+async function loadData(){
+  try{
+    const t=localStorage.getItem('mc_tasks');
+    tasks=t?JSON.parse(t):[];
+    tasks.forEach(x=>{if(!x.startDate)x.startDate=x.deadline;});
+  }catch(e){tasks=[];}
+  try{
+    const p=localStorage.getItem('mc_progress');
+    progress=p?JSON.parse(p):{xp:0,streak:0,lastCompletionDate:null};
+  }catch(e){progress={xp:0,streak:0,lastCompletionDate:null};}
+}
+async function saveTasks(){
+  try{localStorage.setItem('mc_tasks',JSON.stringify(tasks));}catch(e){console.error('save tasks failed',e);}
+}
+async function saveProgress(){
+  try{localStorage.setItem('mc_progress',JSON.stringify(progress));}catch(e){console.error('save progress failed',e);}
+}
+
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),1800);
+}
+
+function renderHeader(){
+  const d=new Date();
+  document.getElementById('todayLabel').textContent=d.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
+  document.getElementById('streakVal').textContent='🔥 '+progress.streak+'d';
+  const level=Math.floor(progress.xp/100)+1;
+  const xpIntoLevel=progress.xp%100;
+  document.getElementById('levelVal').textContent='Lv '+level;
+  document.getElementById('xpBar').style.width=xpIntoLevel+'%';
+}
+
+function renderOverdue(){
+  const t=todayStr();
+  const overdue=tasks.filter(x=>!x.done && x.deadline<t);
+  const banner=document.getElementById('overdueBanner');
+  if(overdue.length>0){
+    banner.style.display='flex';
+    document.getElementById('overdueCount').textContent=overdue.length+' mission'+(overdue.length>1?'s':'')+' overdue.';
+    document.getElementById('overdueText').textContent='These needed fuel yesterday. Knock them out first.';
+  }else{
+    banner.style.display='none';
+  }
+}
+
+function taskRowHTML(task){
+  const t=todayStr();
+  let dueLabel='Due '+fmtDate(task.deadline);
+  if(!task.done){
+    const diff=daysBetween(t,task.deadline);
+    if(diff<0){dueLabel='OVERDUE '+Math.abs(diff)+'d';}
+    else if(diff===0){dueLabel='DUE TODAY';}
+  }
+  const startLabel='Start '+fmtDate(task.startDate);
+  return `<div class="task-row p-${task.priority} ${task.done?'done':''}" data-id="${task.id}">
+    <button class="check-btn" data-action="toggle">${task.done?'✓':''}</button>
+    <div class="task-body">
+      <div class="task-title">${escapeHTML(task.title)}</div>
+      ${task.description?`<div class="task-desc">${escapeHTML(task.description)}</div>`:''}
+      <div class="task-meta">
+        <span class="prio-tag ${task.priority}">${task.priority}</span>
+        <span class="date-tag start">${startLabel}</span>
+        <span class="date-tag due">${dueLabel}</span>
+      </div>
+    </div>
+    <button class="del-btn" data-action="delete">✕</button>
+  </div>`;
+}
+function escapeHTML(s){
+  const d=document.createElement('div');d.textContent=s;return d.innerHTML;
+}
+
+function renderBriefing(){
+  const t=todayStr();
+  const due=tasks.filter(x=>!x.done && x.deadline<=t)
+    .sort((a,b)=>a.deadline.localeCompare(b.deadline));
+  const list=document.getElementById('briefingList');
+  if(due.length===0){
+    list.innerHTML=`<div class="empty-state"><span class="big">🛰️</span>All clear for today. No missions due. Great time to plan ahead or get a head start.</div>`;
+  }else{
+    list.innerHTML=due.map(taskRowHTML).join('');
+  }
+}
+
+function renderWeek(){
+  const monday=getMonday(weekOffset);
+  const dayNames=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  const days=[];
+  for(let i=0;i<7;i++){
+    const d=new Date(monday);
+    d.setDate(monday.getDate()+i);
+    days.push(d);
+  }
+  const rangeLabel=days[0].toLocaleDateString('en-US',{month:'short',day:'numeric'})+' to '+days[6].toLocaleDateString('en-US',{month:'short',day:'numeric'});
+  document.getElementById('weekRange').textContent=(weekOffset===0?'This week · ':'')+rangeLabel;
+
+  const grid=document.getElementById('weekGrid');
+  grid.innerHTML=days.map((d,i)=>{
+    const iso=isoDate(d);
+    const isToday=iso===todayStr();
+    const dayTasks=tasks.filter(x=>x.startDate===iso || x.deadline===iso).sort((a,b)=>{
+      const order={high:0,medium:1,low:2};
+      return order[a.priority]-order[b.priority];
+    });
+    const tasksHTML=dayTasks.length
+      ?dayTasks.map(t=>{
+        const startsHere=t.startDate===iso;
+        const dueHere=t.deadline===iso;
+        const chips=(startsHere?'<span class="date-tag start">Start</span> ':'')+(dueHere?'<span class="date-tag due">Due</span>':'');
+        return `<div class="week-task p-${t.priority} ${t.done?'done':''}" data-id="${t.id}" data-action="toggle">${escapeHTML(t.title)}<br>${chips}</div>`;
+      }).join('')
+      :`<div class="day-empty">Nothing due</div>`;
+    return `<div class="day-col ${isToday?'today-col':''}">
+      <div class="dname">${dayNames[i]}</div>
+      <div class="dnum">${d.getDate()}</div>
+      ${tasksHTML}
+    </div>`;
+  }).join('');
+}
+
+function renderCalendar(){
+  const first=new Date(currentYear,selectedMonth,1);
+  const startWeekday=first.getDay();
+  const daysInMonth=new Date(currentYear,selectedMonth+1,0).getDate();
+  const headNames=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  let cells=headNames.map(n=>`<div class="cal-head">${n}</div>`).join('');
+  for(let i=0;i<startWeekday;i++){cells+='<div class="cal-cell empty"></div>';}
+  for(let day=1;day<=daysInMonth;day++){
+    const dateObj=new Date(currentYear,selectedMonth,day);
+    const iso=isoDate(dateObj);
+    const startingTasks=tasks.filter(x=>x.startDate===iso);
+    const dueTasks=tasks.filter(x=>x.deadline===iso);
+    const isToday=iso===todayStr();
+    const startDots=startingTasks.slice(0,3).map(()=>`<span class="cal-dot start"></span>`).join('');
+    const dueDots=dueTasks.slice(0,3).map(()=>`<span class="cal-dot due"></span>`).join('');
+    const shownCount=Math.min(startingTasks.length,3)+Math.min(dueTasks.length,3);
+    const totalCount=startingTasks.length+dueTasks.length;
+    const more=totalCount>shownCount?`<div class="cal-more">+${totalCount-shownCount}</div>`:'';
+    cells+=`<div class="cal-cell ${isToday?'today':''}">
+      <div class="cal-daynum">${day}</div>
+      <div class="cal-dots">${startDots}${dueDots}</div>
+      ${more}
+    </div>`;
+  }
+  document.getElementById('calGrid').innerHTML=cells;
+}
+
+function renderMonthTabs(){
+  const tabs=document.getElementById('monthTabs');
+  tabs.innerHTML=MONTH_NAMES.map((name,idx)=>{
+    const count=tasks.filter(x=>{
+      const dd=new Date(x.deadline+'T00:00:00');
+      return dd.getMonth()===idx && dd.getFullYear()===currentYear;
+    }).length;
+    return `<div class="month-tab ${idx===selectedMonth?'active':''}" data-month="${idx}">
+      <div class="mname">${name}</div>
+      <div class="mcount">${count}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderMonthList(){
+  const monthTasks=tasks.filter(x=>{
+    const dd=new Date(x.deadline+'T00:00:00');
+    return dd.getMonth()===selectedMonth && dd.getFullYear()===currentYear;
+  }).sort((a,b)=>a.deadline.localeCompare(b.deadline));
+
+  document.getElementById('monthHeading').textContent=MONTH_NAMES[selectedMonth]+' mission log';
+  const done=monthTasks.filter(x=>x.done).length;
+  const pct=monthTasks.length?Math.round(done/monthTasks.length*100):0;
+  document.getElementById('monthSub').textContent=monthTasks.length
+    ?done+' of '+monthTasks.length+' missions complete ('+pct+'%)'
+    :'No missions logged for this month yet. Launch one above.';
+
+  document.getElementById('runwayFill').style.width=pct+'%';
+  document.getElementById('rocketEl').style.left=pct+'%';
+}
+
+function renderAllTasksList(){
+  const sorted=[...tasks].sort((a,b)=>a.deadline.localeCompare(b.deadline));
+  const list=document.getElementById('allTasksList');
+  document.getElementById('allListSub').textContent=sorted.length
+    ?sorted.length+' mission'+(sorted.length>1?'s':'')+' total, earliest due date first.'
+    :'Every mission across every month, earliest due date first.';
+  if(sorted.length===0){
+    list.innerHTML=`<div class="empty-state"><span class="big">🗂️</span>No missions logged yet. Add one above and it'll line up here.</div>`;
+  }else{
+    list.innerHTML=sorted.map(taskRowHTML).join('');
+  }
+}
+
+function renderCompletedList(){
+  const completed=tasks.filter(x=>x.done).sort((a,b)=>{
+    const ac=a.completedAt||a.deadline, bc=b.completedAt||b.deadline;
+    return bc.localeCompare(ac);
+  });
+  const list=document.getElementById('completedTasksList');
+  document.getElementById('completedListSub').textContent=completed.length
+    ?completed.length+' mission'+(completed.length>1?'s':'')+' completed so far. Most recent first.'
+    :"Everything you've already knocked out.";
+  if(completed.length===0){
+    list.innerHTML=`<div class="empty-state"><span class="big">🌱</span>Nothing completed yet. Your first win will show up here.</div>`;
+  }else{
+    list.innerHTML=completed.map(taskRowHTML).join('');
+  }
+}
+
+function renderAll(){
+  renderHeader();
+  renderOverdue();
+  renderBriefing();
+  renderWeek();
+  renderMonthTabs();
+  renderCalendar();
+  renderMonthList();
+  renderAllTasksList();
+  renderCompletedList();
+}
+
+async function toggleTask(id){
+  const task=tasks.find(x=>x.id===id);
+  if(!task)return;
+  task.done=!task.done;
+  if(task.done){
+    task.completedAt=todayStr();
+    progress.xp+=10;
+    const t=todayStr();
+    if(progress.lastCompletionDate!==t){
+      const diff=progress.lastCompletionDate?daysBetween(progress.lastCompletionDate,t):1;
+      if(diff===1){progress.streak+=1;}
+      else if(diff>1||!progress.lastCompletionDate){progress.streak=1;}
+      progress.lastCompletionDate=t;
+    }
+    showToast('Mission complete! +10 XP 🚀');
+  }else{
+    delete task.completedAt;
+  }
+  await saveTasks();
+  await saveProgress();
+  renderAll();
+}
+async function deleteTask(id){
+  tasks=tasks.filter(x=>x.id!==id);
+  await saveTasks();
+  renderAll();
+}
+
+document.addEventListener('click',async(e)=>{
+  const row=e.target.closest('.task-row');
+  if(row){
+    const id=row.dataset.id;
+    if(e.target.dataset.action==='toggle')await toggleTask(id);
+    if(e.target.dataset.action==='delete')await deleteTask(id);
+    return;
+  }
+  const tab=e.target.closest('.month-tab');
+  if(tab){
+    selectedMonth=parseInt(tab.dataset.month,10);
+    renderMonthTabs();
+    renderCalendar();
+    renderMonthList();
+    return;
+  }
+  const weekTask=e.target.closest('.week-task');
+  if(weekTask){
+    toggleTask(weekTask.dataset.id);
+    return;
+  }
+});
+
+document.getElementById('prevWeekBtn').addEventListener('click',()=>{weekOffset--;renderWeek();});
+document.getElementById('nextWeekBtn').addEventListener('click',()=>{weekOffset++;renderWeek();});
+
+document.getElementById('addTaskBtn').addEventListener('click',async()=>{
+  const titleEl=document.getElementById('taskTitle');
+  const descEl=document.getElementById('taskDesc');
+  const startEl=document.getElementById('taskStartDate');
+  const dateEl=document.getElementById('taskDate');
+  const prioEl=document.getElementById('taskPriority');
+  const title=titleEl.value.trim();
+  const description=descEl.value.trim();
+  const deadline=dateEl.value;
+  const startDate=startEl.value||deadline;
+  if(!title){showToast('Give the mission a name first');titleEl.focus();return;}
+  if(!deadline){showToast('Pick a due date to file it correctly');dateEl.focus();return;}
+  if(startDate>deadline){showToast('Start date has to be on or before the due date');startEl.focus();return;}
+  tasks.push({id:uid(),title,description,startDate,deadline,priority:prioEl.value,done:false,createdAt:todayStr()});
+  await saveTasks();
+  titleEl.value='';
+  descEl.value='';
+  startEl.value='';
+  dateEl.value='';
+  prioEl.value='medium';
+  const dd=new Date(deadline+'T00:00:00');
+  if(dd.getFullYear()===currentYear)selectedMonth=dd.getMonth();
+  showToast('Mission launched 🛰️');
+  renderAll();
+});
+
+document.getElementById('taskTitle').addEventListener('keydown',(e)=>{
+  if(e.key==='Enter')document.getElementById('addTaskBtn').click();
+});
+
+(async function init(){
+  document.getElementById('taskDate').value=todayStr();
+  document.getElementById('taskStartDate').value=todayStr();
+  await loadData();
+  renderAll();
+})();
+</script>
+</body>
+</html>
